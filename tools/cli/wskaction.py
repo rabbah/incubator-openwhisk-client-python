@@ -24,7 +24,7 @@ import argparse
 import urllib
 import subprocess
 from wskitem import Item
-from wskutil import (addAuthenticatedCommand, request, getParams,
+from wskutil import (addAuthenticatedCommand, request, getParams, getEnvVars,
                      getActivationArgument, getAnnotations, responseError,
                      parseQName, getQName, apiBase, getPrettyJson)
 
@@ -49,7 +49,8 @@ class Action(Item):
         subcmd.add_argument('--lib', help='add library to artifact (must be a gzipped tar file)', type=argparse.FileType('r'))
         subcmd.add_argument('--shared', nargs='?', const='yes', choices=['yes', 'no'], help='shared action (default: private)')
         subcmd.add_argument('-a', '--annotation', help='annotations', nargs=2, action='append')
-        subcmd.add_argument('-p', '--param', help='default parameters', nargs=2, action='append')
+        subcmd.add_argument('-p', '--param', help='parameters', nargs=2, action='append')
+        subcmd.add_argument('-e', '--envvar', help='environment (initialization) parameters', nargs=2, action='append')
         subcmd.add_argument('-t', '--timeout', help='the timeout limit in milliseconds when the action will be terminated', type=int)
         subcmd.add_argument('-m', '--memory', help='the memory limit in MB of the container that runs the action', type=int)
         subcmd.add_argument('-l', '--logsize', help='the logsize limit in MB of the container that runs the action', type=int)
@@ -65,7 +66,8 @@ class Action(Item):
         subcmd.add_argument('--lib', help='add library to artifact (must be a gzipped tar file)', type=argparse.FileType('r'))
         subcmd.add_argument('--shared', nargs='?', const='yes', choices=['yes', 'no'], help='shared action (default: private)')
         subcmd.add_argument('-a', '--annotation', help='annotations', nargs=2, action='append')
-        subcmd.add_argument('-p', '--param', help='default parameters', nargs=2, action='append')
+        subcmd.add_argument('-p', '--param', help='parameters', nargs=2, action='append')
+        subcmd.add_argument('-e', '--envvar', help='environment (initialization) parameters', nargs=2, action='append')
         subcmd.add_argument('-t', '--timeout', help='the timeout limit in milliseconds when the action will be terminated', type=int)
         subcmd.add_argument('-m', '--memory', help='the memory limit in MB of the container that runs the action', type=int)
         subcmd.add_argument('-l', '--logsize', help='the logsize limit in MB of the container that runs the action', type=int)
@@ -105,6 +107,11 @@ class Action(Item):
                 payload['annotations'] = getAnnotations(args)
             if args.param:
                 payload['parameters'] = getParams(args)
+            if args.envvar:
+                if 'parameters' in payload:
+                    payload['parameters'].extend(getEnvVars(args))
+                else:
+                    payload['parameters'] = getEnvVars(args)
             # API will accept limits == {} as limits not specified on an update
             if (args.timeout is not None or args.memory is not None or
                     args.logsize is not None):
@@ -157,7 +164,7 @@ class Action(Item):
             'apibase': apiBase(props),
             'namespace': urllib.quote(namespace),
             'name': self.getSafeName(pname),
-            'blocking': 'true' if args.blocking else 'false',
+            'blocking': 'true' if args.blocking or args.result else 'false',
             'result': 'true' if 'result' in args and args.result else 'false'
         }
         payload = json.dumps(getActivationArgument(args))

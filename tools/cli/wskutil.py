@@ -159,22 +159,24 @@ def getAnnotations(args):
     return annotations
 
 
-# creates [ { key: "key name", value: "the value" }* ] from arguments
+# creates [ { key: "key name", value: "the value" } ] from arguments
 # to conform to Action schema for parameters and annotations
 def getParams(args):
-    params = []
-    if args.param:
-        for param in args.param:
-            params.append(getParam(param[0], param[1]))
-    if 'payload' in args and args.payload:
-        try:
-            obj = json.loads(args.payload)
-            for key in obj:
-                params.append(getParam(key, obj[key]))
-        except:
-            params.append(getParam('payload', args.payload))
-    return params
+    return getParameters(args.param, False)
 
+# creates [ { key: "key name", value: "the value", init: True } ] from arguments
+# to conform to Action schema for init-time parameters
+def getEnvVars(args):
+    return getParameters(args.envvar, True)
+
+def getParameters(args, asEnvVar):
+    params = []
+    if args:
+        for param in args:
+            p = getParam(param[0], param[1])
+            p['init'] = asEnvVar
+            params.append(p)
+    return params
 
 # creates a parameter { key: "key name", value: "the value" }
 def getParam(key, value):
@@ -187,9 +189,7 @@ def getParam(key, value):
     return p
 
 
-# creates JSON object from parameters; if payload exists, and it is
-# not a valid JSON object, merge its fields else create payload
-# property with args.payload as the value
+# creates JSON object from parameters
 def getActivationArgument(args):
     params = {}
     if args.param:
@@ -198,13 +198,6 @@ def getActivationArgument(args):
                 params[p[0]] = json.loads(p[1])
             except:
                 params[p[0]] = p[1]
-    if 'payload' in args and args.payload:
-        try:
-            obj = json.loads(args.payload)
-            for key in obj:
-                params[key] = obj[key]
-        except:
-            params['payload'] = args.payload
     return params
 
 
